@@ -1,4 +1,5 @@
 import 'package:new_project/constants.dart';
+import 'package:new_project/screens/ask_ai_screen/ask_ai_screen.dart';
 import 'package:new_project/screens/assignment_screen/assignment_screen.dart';
 import 'package:new_project/screens/datesheet_screen/datesheet_screen.dart';
 import 'package:new_project/screens/fee_screen/fee_screen.dart';
@@ -6,7 +7,9 @@ import 'package:new_project/screens/logout_screen/logout_screen.dart';
 import 'package:new_project/screens/my_profile/my_profile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:new_project/screens/quiz_screen/quiz_list_screen.dart';
 import 'package:new_project/screens/task_screen/tasks.dart';
+import 'package:new_project/screens/time_table_screen/time_table_screen.dart';
 import 'package:sizer/sizer.dart';
 import 'widgets/student_data.dart';
 
@@ -121,12 +124,19 @@ class HomeScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         HomeCard(
-                          onPress: () {},
+                          onPress: () {
+                            Navigator.pushNamed(
+                                context, QuizListScreen.routeName);
+                          },
                           icon: 'assets/icons/quiz.svg',
-                          title: 'Take Quiz', // Moved here
+                          title: 'Take Quiz',
                         ),
                         HomeCard(
-                          onPress: () {},
+                          //Time Table
+                          onPress: () {
+                            Navigator.pushNamed(
+                                context, TimeTableScreen.routeName);
+                          },
                           icon: 'assets/icons/timetable.svg',
                           title: 'Time Table',
                         ),
@@ -136,6 +146,7 @@ class HomeScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         HomeCard(
+                          //Result
                           onPress: () {},
                           icon: 'assets/icons/result.svg',
                           title: 'Result',
@@ -154,9 +165,12 @@ class HomeScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         HomeCard(
-                          onPress: () {},
+                          //Ask Ai
+                          onPress: () {
+                            Navigator.pushNamed(context, AskAIScreen.routeName);
+                          },
                           icon: 'assets/icons/ask.svg',
-                          title: 'Ask',
+                          title: 'Ask AI',
                         ),
                         HomeCard(
                           onPress: () {},
@@ -184,11 +198,13 @@ class HomeScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         HomeCard(
+                          //Events
                           onPress: () {},
                           icon: 'assets/icons/event.svg',
                           title: 'Events',
                         ),
                         HomeCard(
+                          //Logout
                           onPress: () {
                             Navigator.pushNamed(
                                 context, LogoutScreen.routeName);

@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "9509996284",
-    "project_id": "myapp-919a3",
-    "storage_bucket": "myapp-919a3.appspot.com"
+    "project_number": "759093825599",
+    "project_id": "academia-admin-portal",
+    "storage_bucket": "academia-admin-portal.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:9509996284:android:af5da11512f6335aef7979",
+        "mobilesdk_app_id": "1:759093825599:android:f9181439bf799ef0dba88a",
         "android_client_info": {
           "package_name": "com.example.new_project"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAoUotJK5zBDFE9atgwneeGgVT9RnHgs9A"
+          "current_key": "AIzaSyBBfu5yPSFatejqKOENfxPMvzyGqDQfEDo"
         }
       ],
       "services": {

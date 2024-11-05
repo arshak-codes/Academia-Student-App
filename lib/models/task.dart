@@ -5,12 +5,13 @@ class Task {
   final String dueDate;
   final bool isCompleted;
 
-  Task(
-      {this.id,
-      required this.title,
-      required this.description,
-      required this.dueDate,
-      required this.isCompleted});
+  Task({
+    this.id,
+    required this.title,
+    required this.description,
+    required this.dueDate,
+    required this.isCompleted,
+  });
 
   Map<String, dynamic> toMap() {
     return {
@@ -31,4 +32,6 @@ class Task {
       isCompleted: map['isCompleted'] == 1,
     );
   }
+
+  DateTime get dueDateAsDateTime => DateTime.parse(dueDate);
 }

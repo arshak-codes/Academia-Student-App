@@ -1,9 +1,11 @@
 // lib/screens/tasks_screen.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For date formatting
+import 'package:new_project/models/firebase_collections.dart';
 
 import '../../models/task.dart';
 import '../../database/database_helper.dart';
+import '../../services/firebase_service.dart';
 
 class TasksScreen extends StatefulWidget {
   const TasksScreen({super.key});
@@ -16,14 +18,16 @@ class TasksScreen extends StatefulWidget {
 class _TasksScreenState extends State<TasksScreen>
     with TickerProviderStateMixin {
   final DatabaseHelper _dbHelper = DatabaseHelper();
+  final FirebaseService _firebaseService = FirebaseService();
   List<Task> _tasks = [];
-  List<Task> _upcomingTasks = [];
+  List<dynamic> _upcomingTasks =
+      []; // This will hold both tasks and assignments
   double _upcomingOpacity = 0.0;
 
   @override
   void initState() {
     super.initState();
-    _loadTasks();
+    _loadTasksAndAssignments();
     Future.delayed(const Duration(milliseconds: 500), () {
       setState(() {
         _upcomingOpacity = 1.0;
@@ -31,14 +35,75 @@ class _TasksScreenState extends State<TasksScreen>
     });
   }
 
-  Future<void> _loadTasks() async {
+  Future<void> _loadTasksAndAssignments() async {
     List<Task> tasks = await _dbHelper.getTasks();
-    String today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    List<Assignment> assignments =
+        await _firebaseService.getAssignmentsForClass('Class 11');
+    print('Fetched ${assignments.length} assignments from Firebase');
+
+    // Get today's date without time
+    DateTime now = DateTime.now();
+    DateTime today = DateTime(now.year, now.month, now.day);
 
     setState(() {
-      _tasks = tasks.where((task) => task.dueDate == today).toList();
-      _upcomingTasks = tasks.where((task) => task.dueDate != today).toList()
-        ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+      // Filter tasks for today
+      _tasks = tasks.where((task) {
+        DateTime taskDate = DateTime.parse(task.dueDate);
+        DateTime taskDateOnly =
+            DateTime(taskDate.year, taskDate.month, taskDate.day);
+        return taskDateOnly.isAtSameMomentAs(today);
+      }).toList();
+
+      // Filter upcoming tasks
+      List<Task> upcomingTasks = tasks.where((task) {
+        DateTime taskDate = DateTime.parse(task.dueDate);
+        DateTime taskDateOnly =
+            DateTime(taskDate.year, taskDate.month, taskDate.day);
+        return taskDateOnly.isAfter(today);
+      }).toList();
+
+      // Filter upcoming assignments based on due date
+      List<Assignment> upcomingAssignments = assignments.where((assignment) {
+        try {
+          DateTime assignmentDate = DateTime.parse(assignment.dueDate);
+          DateTime assignmentDateOnly = DateTime(
+              assignmentDate.year, assignmentDate.month, assignmentDate.day);
+          return assignmentDateOnly.isAfter(today);
+        } catch (e) {
+          print('Error parsing date for assignment: ${assignment.title}');
+          return false;
+        }
+      }).toList();
+
+      // Combine and sort upcoming tasks and assignments
+      _upcomingTasks = [
+        ...upcomingTasks,
+        ...upcomingAssignments,
+      ]..sort((a, b) {
+          DateTime dateA;
+          DateTime dateB;
+
+          if (a is Task) {
+            dateA = DateTime.parse(a.dueDate);
+          } else {
+            Assignment assignment = a as Assignment;
+            dateA = DateTime.parse(assignment.dueDate);
+          }
+
+          if (b is Task) {
+            dateB = DateTime.parse(b.dueDate);
+          } else {
+            Assignment assignment = b as Assignment;
+            dateB = DateTime.parse(assignment.dueDate);
+          }
+
+          return dateA.compareTo(dateB);
+        });
+
+      print('Today\'s tasks: ${_tasks.length}');
+      print('Upcoming tasks: ${upcomingTasks.length}');
+      print('Upcoming assignments: ${upcomingAssignments.length}');
+      print('Combined upcoming items: ${_upcomingTasks.length}');
     });
   }
 
@@ -62,7 +127,7 @@ class _TasksScreenState extends State<TasksScreen>
             title: const Text('Add Task',
                 style: TextStyle(fontSize: 18, color: Colors.white)),
             content: StatefulBuilder(
-              builder: (context, setState) {
+              builder: (context, setDialogState) {
                 return SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -71,12 +136,6 @@ class _TasksScreenState extends State<TasksScreen>
                         decoration: const InputDecoration(
                           labelText: 'Title',
                           labelStyle: TextStyle(color: Colors.white70),
-                          enabledBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(color: Colors.white70),
-                          ),
-                          focusedBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(color: Colors.white),
-                          ),
                         ),
                         style: const TextStyle(color: Colors.white),
                         onChanged: (value) => title = value,
@@ -85,42 +144,24 @@ class _TasksScreenState extends State<TasksScreen>
                         decoration: const InputDecoration(
                           labelText: 'Description',
                           labelStyle: TextStyle(color: Colors.white70),
-                          enabledBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(color: Colors.white70),
-                          ),
-                          focusedBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(color: Colors.white),
-                          ),
                         ),
                         style: const TextStyle(color: Colors.white),
                         onChanged: (value) => description = value,
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 16),
                       Text('Due Date: $dueDate',
                           style: const TextStyle(color: Colors.white)),
                       ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          backgroundColor: Colors.blueGrey,
-                        ),
                         onPressed: () async {
-                          DateTime? selectedDate = await showDatePicker(
+                          final date = await showDatePicker(
                             context: context,
                             initialDate: DateTime.now(),
                             firstDate: DateTime.now(),
                             lastDate: DateTime(2101),
-                            builder: (BuildContext context, Widget? child) {
-                              return Theme(
-                                data: ThemeData.dark(),
-                                child: child!,
-                              );
-                            },
                           );
-
-                          if (selectedDate != null) {
-                            setState(() {
-                              dueDate =
-                                  DateFormat('yyyy-MM-dd').format(selectedDate);
+                          if (date != null) {
+                            setDialogState(() {
+                              dueDate = DateFormat('yyyy-MM-dd').format(date);
                             });
                           }
                         },
@@ -133,31 +174,28 @@ class _TasksScreenState extends State<TasksScreen>
             ),
             actions: [
               TextButton(
-                onPressed: () {
+                onPressed: () async {
                   if (title.isNotEmpty && description.isNotEmpty) {
-                    final newTask = Task(
+                    final task = Task(
                       title: title,
                       description: description,
                       dueDate: dueDate,
                       isCompleted: false,
                     );
-                    _dbHelper.insertTask(newTask);
-                    _loadTasks();
-                    Navigator.of(context).pop();
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please fill all fields.'),
-                      ),
-                    );
+                    await _dbHelper.insertTask(task);
+                    if (mounted) {
+                      Navigator.pop(context);
+                      setState(() {
+                        _loadTasksAndAssignments();
+                      });
+                    }
                   }
                 },
-                child: const Text('Add', style: TextStyle(color: Colors.white)),
+                child: const Text('Add'),
               ),
               TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child:
-                    const Text('Cancel', style: TextStyle(color: Colors.white)),
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
               ),
             ],
           ),
@@ -166,106 +204,81 @@ class _TasksScreenState extends State<TasksScreen>
     );
   }
 
-  String _getUrgencyEmoji(String dueDate) {
-    DateTime taskDate = DateFormat('yyyy-MM-dd').parse(dueDate);
-    DateTime now = DateTime.now();
-    Duration difference = taskDate.difference(now);
+  String _getUrgencyEmoji(DateTime dueDate) {
+    final now = DateTime.now();
+    final difference = dueDate.difference(now).inDays;
 
-    if (difference.inDays == 0) return '🔴'; // Urgent (today)
-    if (difference.inDays == 1) return '🟠'; // High urgency (tomorrow)
-    if (difference.inDays <= 3) return '🟡'; // Medium urgency (within 3 days)
-    return '🟢'; // Low urgency (more than 3 days)
+    if (difference < 0) return '⚠️'; // Overdue
+    if (difference == 0) return '🔥'; // Due today
+    if (difference <= 3) return '⚡'; // Due soon
+    return '📅'; // Due later
   }
 
-  Widget _buildTaskList(List<Task> tasks, bool isToday) {
+  Widget _buildTaskList(List<dynamic> items, bool isToday) {
     return ListView.builder(
-      itemCount: tasks.length,
+      itemCount: items.length,
       itemBuilder: (context, index) {
-        final task = tasks[index];
-        AnimationController controller = AnimationController(
-          vsync: this,
-          duration: const Duration(milliseconds: 400),
-        );
-        Animation<Offset> offsetAnimation = Tween<Offset>(
-          begin: Offset(isToday ? -1.0 : 1.0, 0.0),
-          end: Offset.zero,
-        ).animate(CurvedAnimation(
-          parent: controller,
-          curve: Curves.easeInOut,
-        ));
+        final item = items[index];
+        final bool isAssignment = item is Assignment;
 
-        controller.forward();
+        String title = isAssignment ? item.title : item.title;
+        String subtitle = isAssignment
+            ? '${item.subject} - Due: ${_formatDate(item.dueDate)}'
+            : '${item.description} - Due: ${item.dueDate}';
 
-        return SlideTransition(
-          position: offsetAnimation,
-          child: Card(
-            color: Colors.white.withOpacity(0.8),
-            child: ListTile(
-              title: Text(
-                isToday
-                    ? task.title
-                    : '${_getUrgencyEmoji(task.dueDate)} ${task.title}',
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14), // Reduced font size
-              ),
-              subtitle: Text(
-                isToday ? task.description : 'Due on: ${task.dueDate}',
-                style: const TextStyle(fontSize: 12), // Reduced font size
-              ),
-              trailing: isToday
-                  ? IconButton(
-                      icon: Icon(
-                        task.isCompleted
-                            ? Icons.check_circle
-                            : Icons.check_circle_outline,
-                        color: task.isCompleted ? Colors.green : null,
-                        size: 18, // Reduced size
-                      ),
-                      onPressed: () {
-                        // Toggle completion status
-                        Task updatedTask = Task(
-                          id: task.id,
-                          title: task.title,
-                          description: task.description,
-                          dueDate: task.dueDate,
-                          isCompleted: !task.isCompleted,
-                        );
-                        _dbHelper.updateTask(updatedTask);
-                        _loadTasks();
-                      },
-                    )
-                  : null,
-              onLongPress: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Delete Task',
-                        style: TextStyle(fontSize: 16)), // Reduced font size
-                    content: const Text(
-                        'Are you sure you want to delete this task?'),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          _dbHelper.deleteTask(task.id!);
-                          _loadTasks();
-                          Navigator.of(context).pop();
-                        },
-                        child: const Text('Delete'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Cancel'),
-                      ),
-                    ],
-                  ),
-                );
-              },
+        return Card(
+          color: Colors.white.withOpacity(0.8),
+          child: ListTile(
+            leading: Icon(
+              isAssignment ? Icons.assignment : Icons.task,
+              color: isAssignment ? Colors.orange : Colors.blue,
             ),
+            title: Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            subtitle: Text(
+              subtitle,
+              style: const TextStyle(fontSize: 12),
+            ),
+            trailing: !isAssignment && isToday
+                ? IconButton(
+                    icon: Icon(
+                      item.isCompleted
+                          ? Icons.check_circle
+                          : Icons.check_circle_outline,
+                      color: item.isCompleted ? Colors.green : null,
+                      size: 18,
+                    ),
+                    onPressed: () {
+                      Task updatedTask = Task(
+                        id: item.id,
+                        title: item.title,
+                        description: item.description,
+                        dueDate: item.dueDate,
+                        isCompleted: !item.isCompleted,
+                      );
+                      _dbHelper.updateTask(updatedTask);
+                      _loadTasksAndAssignments();
+                    },
+                  )
+                : null,
           ),
         );
       },
     );
+  }
+
+  String _formatDate(String dateStr) {
+    try {
+      final date = DateTime.parse(dateStr);
+      return "${date.day}/${date.month}/${date.year}";
+    } catch (e) {
+      return dateStr;
+    }
   }
 
   @override

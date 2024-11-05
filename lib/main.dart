@@ -10,7 +10,16 @@ void main() async {
 
   // Initialize Firebase with error handling
   try {
-    await Firebase.initializeApp(); // Initialize Firebase
+    await Firebase.initializeApp(
+      options: const FirebaseOptions(
+          apiKey: "AIzaSyDnDzjKEnG35RlB0JRTDbYdqQgdPUvXDcM",
+          authDomain: "academia-admin-portal.firebaseapp.com",
+          projectId: "academia-admin-portal",
+          storageBucket: "academia-admin-portal.firebasestorage.app",
+          messagingSenderId: "759093825599",
+          appId: "1:759093825599:web:9e43faa11f6acefcdba88a",
+          measurementId: "G-HRJ1F8S06D"),
+    ); // Initialize Firebase
   } catch (e) {
     // Print or log the error
     print("Firebase initialization error: $e");
